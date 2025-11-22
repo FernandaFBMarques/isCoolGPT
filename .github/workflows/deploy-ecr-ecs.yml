@@ -1,0 +1,117 @@
+#################################################################
+# Workflow: Build & Deploy to ECR -> ECS (Fargate)
+#
+# Notes / prerequisites:
+# - This workflow uses GitHub OIDC to assume an AWS role. Create an IAM role
+#   that trusts GitHub's OIDC provider and allow the repo to assume it. Set
+#   the role ARN in the repository secret `AWS_ROLE_TO_ASSUME`.
+#
+# Minimal IAM trust policy example (replace <ACCOUNT_ID> and repo details):
+# {
+#   "Version": "2012-10-17",
+#   "Statement": [
+#     {
+#       "Effect": "Allow",
+#       "Principal": {
+#         "Federated": "arn:aws:iam::<ACCOUNT_ID>:oidc-provider/token.actions.githubusercontent.com"
+#       },
+#       "Action": "sts:AssumeRoleWithWebIdentity",
+#       "Condition": {
+#         "StringLike": {
+#           "token.actions.githubusercontent.com:sub": "repo:FernandaFBMarques/isCoolGPT:ref:refs/heads/main"
+#         }
+#       }
+#     }
+#   ]
+# }
+#
+# Required repository secrets:
+# - AWS_ROLE_TO_ASSUME: Role ARN that GitHub Actions may assume via OIDC
+# - AWS_REGION: AWS region (e.g., us-east-1)
+# - ECR_ACCOUNT_ID: AWS account ID where the ECR repo lives
+# - ECR_REPOSITORY: ECR repository name (e.g., iscoolgpt)
+# - ECS_CLUSTER: ECS cluster name
+# - ECS_SERVICE: ECS service name
+#
+# This workflow builds the Docker image, pushes it to ECR, renders the
+# `.github/ecs/task-definition.json` with the pushed image URI, then
+# registers/updates the ECS service using the official ECS deploy action.
+#################################################################
+
+name: Build and Deploy to ECR and ECS
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+  ECR_ACCOUNT_ID: ${{ secrets.ECR_ACCOUNT_ID }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    outputs:
+      image-uri: ${{ steps.push-image.outputs.image-uri }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, tag and push image
+        id: push-image
+        run: |
+          set -e
+          IMAGE_TAG=${GITHUB_SHA::8}
+          ACCOUNT=${{ env.ECR_ACCOUNT_ID }}
+          REGION=${{ env.AWS_REGION }}
+          REPO=${{ env.ECR_REPOSITORY }}
+          IMAGE_URI="${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com/${REPO}:${IMAGE_TAG}"
+          echo "IMAGE_URI=${IMAGE_URI}" >> $GITHUB_OUTPUT
+          docker build -t ${REPO}:${IMAGE_TAG} .
+          docker tag ${REPO}:${IMAGE_TAG} ${IMAGE_URI}
+          docker push ${IMAGE_URI}
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Render task definition with new image
+        id: render
+        run: |
+          set -e
+          IMAGE_URI="${{ needs.build-and-push.outputs.image-uri }}"
+          echo "Rendering task definition with image: ${IMAGE_URI}"
+          jq --arg img "${IMAGE_URI}" '.containerDefinitions[0].image = $img' .github/ecs/task-definition.json > task-def-rendered.json
+          cat task-def-rendered.json
+
+      - name: Deploy to ECS (register task + update service)
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: task-def-rendered.json
+          service: ${{ secrets.ECS_SERVICE }}
+          cluster: ${{ secrets.ECS_CLUSTER }}
+          wait-for-service-stability: true
