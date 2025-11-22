@@ -1,0 +1,4 @@
+"""
+IsCoolGPT FastAPI application package.
+"""
+
