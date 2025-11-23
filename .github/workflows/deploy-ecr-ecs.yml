@@ -89,15 +89,18 @@ jobs:
         id: push-image
         run: |
           set -e
-          IMAGE_TAG=v1
+          IMAGE_TAG="${GITHUB_SHA::7}"
           ACCOUNT=${{ env.ECR_ACCOUNT_ID }}
           REGION=${{ env.AWS_REGION }}
           REPO=${{ env.ECR_REPOSITORY }}
           IMAGE_URI="${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com/${REPO}:${IMAGE_TAG}"
+          IMAGE_URI_LATEST="${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com/${REPO}:latest"
           echo "IMAGE_URI=${IMAGE_URI}" >> $GITHUB_OUTPUT
           docker build -t ${REPO}:${IMAGE_TAG} .
           docker tag ${REPO}:${IMAGE_TAG} ${IMAGE_URI}
+          docker tag ${REPO}:${IMAGE_TAG} ${IMAGE_URI_LATEST}
           docker push ${IMAGE_URI}
+          docker push ${IMAGE_URI_LATEST}
 
   deploy:
     needs: build-and-push
