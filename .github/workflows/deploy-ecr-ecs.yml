@@ -72,6 +72,17 @@ jobs:
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v1
 
+      - name: Ensure ECR repository exists
+        run: |
+          set -e
+          echo "Checking ECR repository: ${ECR_REPOSITORY} in ${AWS_REGION}"
+          if ! aws ecr describe-repositories --repository-names "$ECR_REPOSITORY" --region "$AWS_REGION" >/dev/null 2>&1; then
+            echo "Repository $ECR_REPOSITORY not found — creating"
+            aws ecr create-repository --repository-name "$ECR_REPOSITORY" --region "$AWS_REGION"
+          else
+            echo "Repository $ECR_REPOSITORY already exists"
+          fi
+
       - name: Build, tag and push image
         id: push-image
         run: |
