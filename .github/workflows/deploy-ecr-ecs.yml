@@ -89,7 +89,7 @@ jobs:
         id: push-image
         run: |
           set -e
-          IMAGE_TAG=${GITHUB_SHA::8}
+          IMAGE_TAG=v1
           ACCOUNT=${{ env.ECR_ACCOUNT_ID }}
           REGION=${{ env.AWS_REGION }}
           REPO=${{ env.ECR_REPOSITORY }}
