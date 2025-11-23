@@ -3,7 +3,6 @@ from fastapi.responses import HTMLResponse
 
 router = APIRouter()
 
-
 @router.get("/main", response_class=HTMLResponse)
 async def get_main() -> str:
     """Simple HTML landing page for the IsCoolGPT API."""
