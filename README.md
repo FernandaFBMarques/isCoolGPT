@@ -12,15 +12,23 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-2. Start the app with Uvicorn (run from the project root):
+2. Export your Gemini API key (supports either `GEMINI_API_KEY` or `API_KEY`):
+
+```bash
+export GEMINI_API_KEY="your-gemini-key"
+# or: export API_KEY="your-gemini-key"
+```
+
+3. Start the app with Uvicorn (run from the project root):
 
 ```bash
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-3. Open the interactive API docs:
+4. Open the chat UI and API docs:
   - Swagger UI: http://127.0.0.1:8000/docs
   - ReDoc: http://127.0.0.1:8000/redoc
+  - Chat UI: http://127.0.0.1:8000/main (posts to `/chat`)
 
 Notes:
 - Use `--reload` for development to enable auto-reload on code changes.
