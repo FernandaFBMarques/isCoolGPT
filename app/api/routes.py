@@ -12,7 +12,7 @@ async def get_main() -> str:
     <html lang="en">
       <head>
         <meta charset="UTF-8" />
-        <title>IsCoolGPT API</title>
+        <title>IsCoolGPT</title>
         <style>
           body {
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;

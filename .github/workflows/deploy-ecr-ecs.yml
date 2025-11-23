@@ -53,6 +53,8 @@ env:
   ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
   ECR_ACCOUNT_ID: ${{ secrets.ECR_ACCOUNT_ID }}
   AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECS_CLUSTER: ${{ secrets.ECS_CLUSTER }}
+  ECS_SERVICE: ${{ secrets.ECS_SERVICE }}
 
 jobs:
   build-and-push:
@@ -101,28 +103,17 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Render task definition with new image
-        id: render
+      - name: Force new deployment on ECS service
         run: |
-          set -e
-          IMAGE_URI="${{ needs.build-and-push.outputs.image-uri }}"
-          echo "Rendering task definition with image: ${IMAGE_URI}"
-          jq --arg img "${IMAGE_URI}" '.containerDefinitions[0].image = $img' .github/ecs/task-definition.json > task-def-rendered.json
-          cat task-def-rendered.json
+          aws ecs update-service \
+            --cluster "${ECS_CLUSTER}" \
+            --service "${ECS_SERVICE}" \
+            --force-new-deployment \
+            --region "${AWS_REGION}"
 
-      - name: Deploy to ECS (register task + update service)
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-        with:
-          task-definition: task-def-rendered.json
-          service: ${{ secrets.ECS_SERVICE }}
-          cluster: ${{ secrets.ECS_CLUSTER }}
-          wait-for-service-stability: true
