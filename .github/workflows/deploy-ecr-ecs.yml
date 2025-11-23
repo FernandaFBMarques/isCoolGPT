@@ -55,6 +55,7 @@ env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
   ECS_CLUSTER: ${{ secrets.ECS_CLUSTER }}
   ECS_SERVICE: ${{ secrets.ECS_SERVICE }}
+  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
 jobs:
   build-and-push:
