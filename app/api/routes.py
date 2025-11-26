@@ -35,7 +35,7 @@ class ChatResponse(BaseModel):
 
 @router.get("/main", response_class=HTMLResponse)
 async def get_main() -> str:
-    """Serve a simple chat UI backed by the Gemini API."""
+    """Serve a simple chat backed by the Gemini API."""
     return """
     <!DOCTYPE html>
     <html lang="en">
