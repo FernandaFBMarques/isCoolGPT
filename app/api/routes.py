@@ -2,7 +2,7 @@ import os
 from typing import Optional
 
 import google.generativeai as genai
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
@@ -31,6 +31,23 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     reply: str = Field(..., description="Model-generated reply")
+
+
+def _generate_reply(message: str) -> str:
+    """Send a prompt to the Gemini API and return the generated text."""
+    if _gemini_model is None:
+        raise HTTPException(status_code=500, detail="Gemini API key not configured.")
+
+    try:
+        result = _gemini_model.generate_content(message)
+        reply_text = (result.text or "").strip()
+    except Exception as exc:  # pragma: no cover - defensive path
+        raise HTTPException(status_code=502, detail="Gemini API request failed.") from exc
+
+    if not reply_text:
+        raise HTTPException(status_code=502, detail="Gemini API returned an empty response.")
+
+    return reply_text
 
 
 @router.get("/main", response_class=HTMLResponse)
@@ -260,19 +277,22 @@ async def get_ping() -> dict[str, str]:
     return {"message": "pong"}
 
 
+@router.get("/chat", response_model=ChatResponse)
+def get_chat(
+    message: str = Query(
+        ...,
+        min_length=1,
+        max_length=4000,
+        description="User prompt",
+    )
+) -> ChatResponse:
+    """Allow chatting via GET (useful for quick tests or ALB health checks)."""
+    reply_text = _generate_reply(message)
+    return ChatResponse(reply=reply_text)
+
+
 @router.post("/chat", response_model=ChatResponse)
 def post_chat(request: ChatRequest) -> ChatResponse:
     """Send a prompt to the Gemini API and return the generated reply."""
-    if _gemini_model is None:
-        raise HTTPException(status_code=500, detail="Gemini API key not configured.")
-
-    try:
-        result = _gemini_model.generate_content(request.message)
-        reply_text = (result.text or "").strip()
-    except Exception as exc:  # pragma: no cover - defensive path
-        raise HTTPException(status_code=502, detail="Gemini API request failed.") from exc
-
-    if not reply_text:
-        raise HTTPException(status_code=502, detail="Gemini API returned an empty response.")
-
+    reply_text = _generate_reply(request.message)
     return ChatResponse(reply=reply_text)
