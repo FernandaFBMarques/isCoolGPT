@@ -280,7 +280,7 @@ async def get_ping() -> dict[str, str]:
 @router.get("/chat", response_model=ChatResponse)
 def get_chat(
     message: str = Query(
-        ...,
+        "ping",
         min_length=1,
         max_length=4000,
         description="User prompt",
