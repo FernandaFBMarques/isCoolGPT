@@ -19,7 +19,7 @@ def _configure_gemini() -> Optional[genai.GenerativeModel]:
         return None
 
     genai.configure(api_key=api_key)
-    return genai.GenerativeModel("gemini-1.5-flash")
+    return genai.GenerativeModel("gemini-2.5-flash")
 
 
 _gemini_model = _configure_gemini()
