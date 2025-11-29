@@ -65,11 +65,6 @@ If you prefer a different host port, change the left side of `-p`, for example `
 - `app/services/openai_client.py` — OpenAI Chat Completions helper
 - `app/web/` — lightweight frontend route and Jinja2 template for the chat UI
 
----
 
-If you want, I can:
-- Create the Pull Request for these changes (I have already pushed branch `add-readme-ci`).
-- Extend the CI workflow to push to ECR and deploy to ECS (needs credentials/secrets).
-- Add a small smoke test to validate the API root endpoint.
 # isCoolGPT
 IsCoolGPT – Intelligent Study Assistant for Cloud Computing
