@@ -1,0 +1,36 @@
+{
+  "family": "iscoolgpt-task",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "<EXECUTION_ROLE_ARN>",
+  "taskRoleArn": "<TASK_ROLE_ARN>",
+  "containerDefinitions": [
+    {
+      "name": "iscoolgpt",
+      "image": "<ECR_IMAGE_URI>",
+      "essential": true,
+      "portMappings": [
+        { "containerPort": 8000, "protocol": "tcp" }
+      ],
+      "environment": [
+        { "name": "PORT", "value": "8000" }
+      ],
+      "secrets": [
+        {
+          "name": "GEMINI_API_KEY",
+          "valueFrom": "<GEMINI_SECRET_ARN>"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/iscoolgpt",
+          "awslogs-region": "<AWS_REGION>",
+          "awslogs-stream-prefix": "iscoolgpt"
+        }
+      }
+    }
+  ]
+}

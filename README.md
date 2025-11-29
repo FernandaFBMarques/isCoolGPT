@@ -26,9 +26,9 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 4. Open the chat UI and API docs:
-  - Swagger UI: http://127.0.0.1:8000/docs
+ - Swagger UI: http://127.0.0.1:8000/docs
   - ReDoc: http://127.0.0.1:8000/redoc
-  - Chat UI: http://127.0.0.1:8000/main (posts to `/chat`)
+  - Chat UI: http://127.0.0.1:8000/ (or `/main`) — served as a template that calls the `/chat` API
 
 Notes:
 - Use `--reload` for development to enable auto-reload on code changes.
@@ -56,6 +56,13 @@ If you prefer a different host port, change the left side of `-p`, for example `
 - **Git / GitHub** — source control
 - **GitHub Actions** — CI/CD (scaffold added; full pipelines to be extended)
 - **AWS ECR / ECS** — container registry and hosting (CI/CD and deployment will be added later)
+
+## Project layout (backend vs UI)
+
+- `app/main.py` — FastAPI factory that wires routers and settings
+- `app/api/` — backend endpoints (`chat.py`, `health.py`)
+- `app/services/gemini.py` — Gemini client and helper used by the API
+- `app/web/` — lightweight frontend route and Jinja2 template for the chat UI
 
 ---
 
