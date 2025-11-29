@@ -10,7 +10,8 @@ class Settings:
     app_name: str = "IsCoolGPT API"
     port: int = 8000
     api_key: str | None = None
-    gemini_model: str = "gemini-2.5-flash-latest"
+    # Default to a model supported by the installed google-generativeai version.
+    gemini_model: str = "gemini-1.5-flash"
 
 
 def load_settings() -> Settings:
