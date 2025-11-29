@@ -136,9 +136,17 @@ jobs:
       - name: Render new task definition (update image; optional Gemini secret)
         run: |
           set -e
-          IMAGE_URI="${{ needs.build-and-push.outputs.image-uri }}"
           CONTAINER="${CONTAINER_NAME}"
           SECRET_ARN="${GEMINI_SECRET_ARN:-}"
+          IMAGE_URI="${{ needs.build-and-push.outputs.image-uri }}"
+          if [ -z "${IMAGE_URI}" ] || [ "${IMAGE_URI}" = "null" ]; then
+            IMAGE_URI=$(jq -r --arg NAME "${CONTAINER}" '.containerDefinitions[] | select(.name==$NAME) | .image // empty' task-def.json)
+            if [ -z "${IMAGE_URI}" ]; then
+              echo "IMAGE_URI is empty and no existing image found in task-def.json" >&2
+              exit 1
+            fi
+            echo "Using existing image from task definition: ${IMAGE_URI}"
+          fi
           if [ -z "${SECRET_ARN}" ]; then
             echo "GEMINI_SECRET_ARN not set; keeping existing envs as-is (GEMINI_API_KEY must remain in environment)." >&2
           fi
