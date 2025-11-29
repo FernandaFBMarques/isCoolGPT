@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from app.api.chat import router as chat_router
+from app.api.chatgpt import router as chatgpt_router
 from app.api.health import router as health_router
 from app.core.config import load_settings
 from app.web.routes import router as web_router
@@ -12,6 +13,7 @@ def create_app() -> FastAPI:
     app.state.settings = load_settings()
     app.include_router(health_router)
     app.include_router(chat_router)
+    app.include_router(chatgpt_router)
     app.include_router(web_router)
     return app
 

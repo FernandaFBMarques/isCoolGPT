@@ -12,6 +12,8 @@ class Settings:
     api_key: str | None = None
     # Default model compatible with google-generativeai v1 API.
     gemini_model: str = "gemini-2.5-flash"
+    openai_api_key: str | None = None
+    openai_model: str = "gpt-4o-mini"
 
 
 def load_settings() -> Settings:
@@ -30,4 +32,6 @@ def load_settings() -> Settings:
         port=port_value,
         api_key=api_key,
         gemini_model=os.getenv("GEMINI_MODEL", Settings.gemini_model),
+        openai_api_key=os.getenv("OPENAI_API_KEY"),
+        openai_model=os.getenv("OPENAI_MODEL", Settings.openai_model),
     )

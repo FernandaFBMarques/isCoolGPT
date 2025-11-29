@@ -60,8 +60,9 @@ If you prefer a different host port, change the left side of `-p`, for example `
 ## Project layout (backend vs UI)
 
 - `app/main.py` — FastAPI factory that wires routers and settings
-- `app/api/` — backend endpoints (`chat.py`, `health.py`)
+- `app/api/` — backend endpoints (`chat.py`, `chatgpt.py`, `health.py`)
 - `app/services/gemini.py` — Gemini client and helper used by the API
+- `app/services/openai_client.py` — OpenAI Chat Completions helper
 - `app/web/` — lightweight frontend route and Jinja2 template for the chat UI
 
 ---
