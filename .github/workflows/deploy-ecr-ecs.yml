@@ -56,6 +56,8 @@ env:
   ECS_CLUSTER: ${{ secrets.ECS_CLUSTER }}
   ECS_SERVICE: ${{ secrets.ECS_SERVICE }}
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+  GEMINI_SECRET_ARN: ${{ secrets.GEMINI_SECRET_ARN }}
+  CONTAINER_NAME: iscoolgpt-api-container
 
 jobs:
   build-and-push:
@@ -107,17 +109,74 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout (for tooling)
+        uses: actions/checkout@v4
+
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Force new deployment on ECS service
+      - name: Download current task definition
+        id: task-def
         run: |
+          set -e
+          TASK_DEF_ARN=$(aws ecs describe-services \
+            --cluster "${ECS_CLUSTER}" \
+            --services "${ECS_SERVICE}" \
+            --query 'services[0].taskDefinition' \
+            --output text)
+          echo "TASK_DEF_ARN=${TASK_DEF_ARN}"
+          echo "TASK_DEF_ARN=${TASK_DEF_ARN}" >> $GITHUB_OUTPUT
+          aws ecs describe-task-definition \
+            --task-definition "${TASK_DEF_ARN}" \
+            --query 'taskDefinition' > task-def.json
+
+      - name: Render new task definition (update image; optional Gemini secret)
+        run: |
+          set -e
+          IMAGE_URI="${{ needs.build-and-push.outputs.image-uri }}"
+          CONTAINER="${CONTAINER_NAME}"
+          SECRET_ARN="${GEMINI_SECRET_ARN:-}"
+          if [ -z "${SECRET_ARN}" ]; then
+            echo "GEMINI_SECRET_ARN not set; keeping existing envs as-is (GEMINI_API_KEY must remain in environment)." >&2
+          fi
+          jq \
+            --arg IMAGE "${IMAGE_URI}" \
+            --arg SECRET "${SECRET_ARN}" \
+            --arg NAME "${CONTAINER}" \
+            '
+            .containerDefinitions |= (map(
+              if .name == $NAME then
+                .image = $IMAGE
+                | (if $SECRET != "" then
+                    .secrets = ([.secrets[]?] + [{"name":"GEMINI_API_KEY","valueFrom":$SECRET}])
+                    | .secrets |= (reduce .[] as $s ({}; .[$s.name] = $s) | to_entries | map(.value))
+                  else . end)
+              else . end
+            ))
+            | del(.status, .taskDefinitionArn, .revision, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
+            ' task-def.json > task-def-rendered.json
+          cat task-def-rendered.json
+
+      - name: Register new task definition revision
+        id: register-task
+        run: |
+          set -e
+          NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://task-def-rendered.json \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+          echo "NEW_TASK_DEF_ARN=${NEW_TASK_DEF_ARN}"
+          echo "TASK_DEF_ARN=${NEW_TASK_DEF_ARN}" >> $GITHUB_OUTPUT
+
+      - name: Update ECS service
+        run: |
+          set -e
           aws ecs update-service \
             --cluster "${ECS_CLUSTER}" \
             --service "${ECS_SERVICE}" \
+            --task-definition "${{ steps.register-task.outputs.TASK_DEF_ARN }}" \
             --force-new-deployment \
             --region "${AWS_REGION}"
-
